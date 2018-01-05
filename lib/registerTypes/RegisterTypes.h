@@ -10,6 +10,7 @@
 #pragma once
 
 #include "../NetPacks.h"
+#include "../NetPacksLobby.h"
 #include "../VCMI_Lib.h"
 #include "../CArtHandler.h"
 #include "../CPlayerState.h"
@@ -231,8 +232,6 @@ void registerTypesClientPacks1(Serializer &s)
 	s.template registerType<CPackForClient, ChangeObjPos>();
 	s.template registerType<CPackForClient, PlayerEndsGame>();
 	s.template registerType<CPackForClient, RemoveBonus>();
-	s.template registerType<CPackForClient, UpdateCampaignState>();
-	s.template registerType<CPackForClient, PrepareForAdvancingCampaign>();
 	s.template registerType<CPackForClient, UpdateArtHandlerLists>();
 	s.template registerType<CPackForClient, UpdateMapEvents>();
 	s.template registerType<CPackForClient, UpdateCastleEvents>();
@@ -309,16 +308,14 @@ void registerTypesClientPacks2(Serializer &s)
 	s.template registerType<CArtifactOperationPack, AssembledArtifact>();
 	s.template registerType<CArtifactOperationPack, DisassembledArtifact>();
 
-	s.template registerType<CPackForClient, SaveGame>();
-	s.template registerType<CPackForClient, PlayerMessage>();
+	s.template registerType<CPackForClient, SaveGameClient>();
+	s.template registerType<CPackForClient, PlayerMessageClient>();
 }
 
 template<typename Serializer>
 void registerTypesServerPacks(Serializer &s)
 {
 	s.template registerType<CPack, CPackForServer>();
-	s.template registerType<CPackForServer, CloseServer>();
-	s.template registerType<CPackForServer, LeaveGame>();
 	s.template registerType<CPackForServer, EndTurn>();
 	s.template registerType<CPackForServer, DismissHero>();
 	s.template registerType<CPackForServer, MoveHero>();
@@ -348,23 +345,34 @@ void registerTypesServerPacks(Serializer &s)
 }
 
 template<typename Serializer>
-void registerTypesPregamePacks(Serializer &s)
+void registerTypesLobbyPacks(Serializer &s)
 {
-	s.template registerType<CPack, CPackForSelectionScreen>();
-	s.template registerType<CPackForSelectionScreen, CPregamePackToPropagate>();
-	s.template registerType<CPackForSelectionScreen, CPregamePackToHost>();
+	s.template registerType<CPack, CPackForLobby>();
+	s.template registerType<CPackForLobby, CLobbyPackToPropagate>();
+	s.template registerType<CPackForLobby, CLobbyPackToServer>();
 
-	s.template registerType<CPregamePackToPropagate, ChatMessage>();
-	s.template registerType<CPregamePackToPropagate, QuitMenuWithoutStarting>();
-	s.template registerType<CPregamePackToPropagate, SelectMap>();
-	s.template registerType<CPregamePackToPropagate, UpdateStartOptions>();
-	s.template registerType<CPregamePackToPropagate, PregameGuiAction>();
-	s.template registerType<CPregamePackToPropagate, PlayerLeft>();
-	s.template registerType<CPregamePackToPropagate, PlayersNames>();
-	s.template registerType<CPregamePackToPropagate, StartWithCurrentSettings>();
+	// Any client can sent
+	s.template registerType<CLobbyPackToPropagate, LobbyClientConnected>();
+	s.template registerType<CLobbyPackToPropagate, LobbyClientDisconnected>();
+	s.template registerType<CLobbyPackToPropagate, LobbyChatMessage>();
+	// Only host client send
+	s.template registerType<CLobbyPackToPropagate, LobbyGuiAction>();
+	s.template registerType<CLobbyPackToPropagate, LobbyStartGame>();
+	s.template registerType<CLobbyPackToPropagate, LobbyChangeHost>();
+	// Only server send
+	s.template registerType<CLobbyPackToPropagate, LobbyUpdateState>();
 
-	s.template registerType<CPregamePackToHost, PlayerJoined>();
-	s.template registerType<CPregamePackToHost, RequestOptionsChange>();
+	// For client with permissions
+	s.template registerType<CLobbyPackToServer, LobbyChangePlayerOption>();
+	// Only for host client
+	s.template registerType<CLobbyPackToServer, LobbySetMap>();
+	s.template registerType<CLobbyPackToServer, LobbySetCampaign>();
+	s.template registerType<CLobbyPackToServer, LobbySetCampaignMap>();
+	s.template registerType<CLobbyPackToServer, LobbySetCampaignBonus>();
+	s.template registerType<CLobbyPackToServer, LobbySetPlayer>();
+	s.template registerType<CLobbyPackToServer, LobbySetTurnTime>();
+	s.template registerType<CLobbyPackToServer, LobbySetDifficulty>();
+	s.template registerType<CLobbyPackToServer, LobbyForceSetPlayer>();
 }
 
 template<typename Serializer>
@@ -376,7 +384,7 @@ void registerTypes(Serializer &s)
 	registerTypesClientPacks1(s);
 	registerTypesClientPacks2(s);
 	registerTypesServerPacks(s);
-	registerTypesPregamePacks(s);
+	registerTypesLobbyPacks(s);
 }
 
 #ifndef INSTANTIATE_REGISTER_TYPES_HERE

@@ -153,6 +153,7 @@ public:
 	virtual ~CGameState();
 
 	void init(const IMapService * mapService, StartInfo * si, bool allowSavingRandomMap = false);
+	void updateOnLoad(StartInfo * si);
 
 	ConstTransitivePtr<StartInfo> scenarioOps, initialOpts; //second one is a copy of settings received from pregame (not randomized)
 	PlayerColor currentPlayer; //ID of player currently having turn
