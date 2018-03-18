@@ -34,6 +34,8 @@
 # (To distribute this file outside of CMake, substitute the full
 #  License text for the above reference.)
 
+include(VCPKGLibraryFinder)
+
 if (NOT WIN32)
     find_package(PkgConfig)
     if (PKG_CONFIG_FOUND)

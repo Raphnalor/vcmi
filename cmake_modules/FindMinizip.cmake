@@ -27,6 +27,8 @@
 # (To distribute this file outside of CMake, substitute the full
 #  License text for the above reference.)
 
+include(VCPKGLibraryFinder)
+
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
   set(VC_LIB_PATH_SUFFIX lib/x64)
 else()
