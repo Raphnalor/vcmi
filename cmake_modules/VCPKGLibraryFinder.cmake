@@ -4,10 +4,7 @@ if (NOT _VCPKG_ROOT_DIR)
   return()
 endif()
 
-cmake_policy(PUSH)
-cmake_policy(SET CMP0057 NEW)
-
-function(vcpkg_parse_find_library_arguments prefix #[[arguments]])
+function(_vcpkg_parse_find_library_arguments outputVar outputNames #[[arguments]])
   set(var)
   set(names)
   set(arguments ${ARGN})
@@ -24,7 +21,8 @@ function(vcpkg_parse_find_library_arguments prefix #[[arguments]])
         while (arguments)
           list(GET arguments 0 arg)
           list (REMOVE_AT arguments 0)
-          if (arg IN_LIST stopList)
+          list (FIND stopList arg idx)
+          if (NOT idx EQUAL -1)
             break()
           endif()
           list(APPEND names ${arg})
@@ -34,91 +32,63 @@ function(vcpkg_parse_find_library_arguments prefix #[[arguments]])
       endif()
     endif()
   endif()
-  set (${prefix}_VAR ${var} PARENT_SCOPE)
-  set (${prefix}_NAMES ${names} PARENT_SCOPE)
+  set (${outputVar} ${var} PARENT_SCOPE)
+  set (${outputNames} ${names} PARENT_SCOPE)
 endfunction()
 
-function (vcpkg_replace_item_in_list var findWhat replaceWith)
-  set(temp ${${var}})
-  list(FIND temp ${findWhat} _IDX)
-  if (NOT _IDX EQUAL -1)
-    list(REMOVE_AT temp _IDX)
-    list(APPEND temp ${replaceWith})
-  endif()
-  set(${var} ${temp} PARENT_SCOPE)
-endfunction()
-
-function(vcpkg_get_library_debug_names outputVar names)
-  set (debugNames ${names})
-  vcpkg_replace_item_in_list(debugNames "SDL2" "SDL2d")
-  vcpkg_replace_item_in_list(debugNames "fuzzylite" "fuzzylite-debug")
-  set (${outputVar} ${debugNames} PARENT_SCOPE)
+function (_vcpkg_append_library_debug_names inOutNames)
+  set (names ${${inOutNames}})
+  set (resultNames)
+  foreach (name ${names})
+    list(APPEND resultNames "${name}" "${name}d" "${name}-debug")
+  endforeach()
+  set (${inOutNames} ${resultNames} PARENT_SCOPE)
 endfunction()
 
 function(find_library #[[arguments]])
-  vcpkg_parse_find_library_arguments(_FIND_LIBRARY_ARGS ${ARGN})
-  if (_FIND_LIBRARY_ARGS_VAR)
-    _find_library(${_FIND_LIBRARY_ARGS_VAR}_RELEASE
-      NAMES
-        ${_FIND_LIBRARY_ARGS_NAMES}
-      HINTS
-        ${_VCPKG_ROOT_DIR}/installed/${VCPKG_TARGET_TRIPLET}/lib
-      NO_DEFAULT_PATH
-    )
-    vcpkg_get_library_debug_names(_LIBRARY_DEBUG_NAMES ${_FIND_LIBRARY_ARGS_NAMES})
-    _find_library(${_FIND_LIBRARY_ARGS_VAR}_DEBUG
-      NAMES
-        ${_LIBRARY_DEBUG_NAMES}
-      HINTS
-        ${_VCPKG_ROOT_DIR}/installed/${VCPKG_TARGET_TRIPLET}/debug/lib
-      NO_DEFAULT_PATH
-    )
-    mark_as_advanced(${_FIND_LIBRARY_ARGS_VAR}_RELEASE ${_FIND_LIBRARY_ARGS_VAR}_DEBUG)
-    if (${_FIND_LIBRARY_ARGS_VAR}_RELEASE AND ${_FIND_LIBRARY_ARGS_VAR}_DEBUG)
-      set(${_FIND_LIBRARY_ARGS_VAR} optimized ${${_FIND_LIBRARY_ARGS_VAR}_RELEASE}
-                                    debug ${${_FIND_LIBRARY_ARGS_VAR}_DEBUG}
-                                    CACHE STRING "Paths to optimized and debug libraries.")
-    else()
-      _find_library(${ARGN})
-    endif()
+  _vcpkg_parse_find_library_arguments(var names ${ARGN})
+  if (NOT var OR NOT names)
+    _find_library(${ARGN})
+    return()
   endif()
+
+  if (${var})
+    return()
+  endif()
+
+  _find_library(_LIBPATH_RELEASE
+    NAMES
+      ${names}
+    HINTS
+      ${_VCPKG_ROOT_DIR}/installed/${VCPKG_TARGET_TRIPLET}/lib
+    NO_DEFAULT_PATH
+  )
+
+  set(debugNames ${names})
+  _vcpkg_append_library_debug_names(debugNames)
+  _find_library(_LIBPATH_DEBUG
+    NAMES
+      ${debugNames}
+    HINTS
+      ${_VCPKG_ROOT_DIR}/installed/${VCPKG_TARGET_TRIPLET}/debug/lib
+    NO_DEFAULT_PATH
+  )
+
+  set (libPaths)
+  if (_LIBPATH_RELEASE)
+    list(APPEND libPaths optimized "${_LIBPATH_RELEASE}")
+  endif()
+  if (_LIBPATH_DEBUG)
+    list(APPEND libPaths debug "${_LIBPATH_DEBUG}")
+  endif()
+  unset(_LIBPATH_RELEASE CACHE)
+  unset(_LIBPATH_DEBUG CACHE)
+
+  if (NOT libPaths)
+    _find_library(${ARGN})
+    return()
+  endif()
+
+  set (${var} "${libPaths}" CACHE STRING "Paths to optimized and debug libraries.")
 endfunction()
 
-cmake_policy(POP)
-
-#######################################################
-return()
-
-parseFindLibraryArguments(
-  X
-    SDL2_IMAGE_LIBRARY
-  NAMES 
-    SDL2_image
-    SDL2_imaged
-  HINTS
-    ENV SDL2IMAGEDIR
-    ENV SDL2DIR
-  PATH_SUFFIXES 
-    lib)
-
-message("!! X_NAMES=${X_NAMES}")
-message("!! X_VAR=${X_VAR}")
-
-parseFindLibraryArguments(
-  X
-    SDL2_IMAGE_LIBRARY
-  SDL2_image
-  HINTS
-    ENV SDL2IMAGEDIR
-    ENV SDL2DIR
-  PATH_SUFFIXES 
-    lib)
-
-message("!! X_NAMES=${X_NAMES}")
-message("!! X_VAR=${X_VAR}")
-
-parseFindLibraryArguments(
-  X)
-
-message("!! X_NAMES=${X_NAMES}")
-message("!! X_VAR=${X_VAR}")
